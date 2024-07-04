@@ -50,7 +50,7 @@ class Fsmn_vad:
 
         model_file = os.path.join(model_dir, "model.onnx")
         if quantize:
-            model_file = os.path.join(model_dir, "model_quant.onnx")
+            model_file = os.path.join(model_dir, "model_quant_fp16+int8.onnx")
         if not os.path.exists(model_file):
             print(".onnx does not exist, begin to export onnx")
             try:
@@ -75,19 +75,26 @@ class Fsmn_vad:
         )
         self.encoder_conf = config["encoder_conf"]
 
-    def prepare_cache(self, in_cache: list = []):
+        self.dtype_list = [node.type.split('(')[1].split(')')[0] for node in self.ort_infer.session.get_inputs()]
+        self.is_float16 = True if self.dtype_list[0] == 'float16' else False
+
+    def prepare_cache(self, in_cache: list = [], dtype=np.float32):
         if len(in_cache) > 0:
             return in_cache
         fsmn_layers = self.encoder_conf["fsmn_layers"]
         proj_dim = self.encoder_conf["proj_dim"]
         lorder = self.encoder_conf["lorder"]
         for i in range(fsmn_layers):
-            cache = np.zeros((1, proj_dim, lorder - 1, 1)).astype(np.float32)
+            cache = np.zeros((1, proj_dim, lorder - 1, 1)).astype(dtype)
             in_cache.append(cache)
         return in_cache
 
     def __call__(self, audio_in: Union[str, np.ndarray, List[str]], **kwargs) -> List:
         waveform_list = self.load_data(audio_in, self.frontend.opts.frame_opts.samp_freq)
+
+        if self.is_float16:
+            waveform_list = [w.astype(np.float16, copy=False) for w in waveform_list]
+
         waveform_nums = len(waveform_list)
         is_final = kwargs.get("kwargs", False)
 
@@ -97,10 +104,12 @@ class Fsmn_vad:
             end_idx = min(waveform_nums, beg_idx + self.batch_size)
             waveform = waveform_list[beg_idx:end_idx]
             feats, feats_len = self.extract_feat(waveform)
+            if self.is_float16:
+                feats = feats.astype(np.float16, copy=False)
             waveform = np.array(waveform)
             param_dict = kwargs.get("param_dict", dict())
             in_cache = param_dict.get("in_cache", list())
-            in_cache = self.prepare_cache(in_cache)
+            in_cache = self.prepare_cache(in_cache, dtype=np.float16 if self.is_float16 else np.float32)
             try:
                 t_offset = 0
                 step = int(min(feats_len.max(), 6000))
@@ -219,7 +228,7 @@ class Fsmn_vad_online:
 
         model_file = os.path.join(model_dir, "model.onnx")
         if quantize:
-            model_file = os.path.join(model_dir, "model_quant.onnx")
+            model_file = os.path.join(model_dir, "model_quant_fp16+int8.onnx")
         if not os.path.exists(model_file):
             print(".onnx does not exist, begin to export onnx")
             try:

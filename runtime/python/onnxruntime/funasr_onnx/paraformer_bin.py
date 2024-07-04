@@ -278,8 +278,8 @@ class ContextualParaformer(Paraformer):
                 )
 
         if quantize:
-            model_bb_file = os.path.join(model_dir, "model_quant.onnx")
-            model_eb_file = os.path.join(model_dir, "model_eb_quant.onnx")
+            model_bb_file = os.path.join(model_dir, "model_quant_fp16+int8.onnx")
+            model_eb_file = os.path.join(model_dir, "model_eb_quant_fp16+int8.onnx")
         else:
             model_bb_file = os.path.join(model_dir, "model.onnx")
             model_eb_file = os.path.join(model_dir, "model_eb.onnx")
@@ -323,6 +323,8 @@ class ContextualParaformer(Paraformer):
         else:
             self.pred_bias = 0
 
+        self.is_bb_float16 = True if [node.type.split('(')[1].split(')')[0] for node in self.ort_infer_bb.session.get_inputs()][0] == 'float16' else False
+
     def __call__(
         self, wav_content: Union[str, np.ndarray, List[str]], hotwords: str, **kwargs
     ) -> List:
@@ -332,16 +334,26 @@ class ContextualParaformer(Paraformer):
         # make hotword list
         hotwords, hotwords_length = self.proc_hotword(hotwords)
         [bias_embed] = self.eb_infer(hotwords, hotwords_length)
+        if self.is_bb_float16:
+            if bias_embed.dtype == np.float32:
+                bias_embed = bias_embed.astype(np.float16, copy=False)
+        else:
+            if bias_embed.dtype == np.float16:
+                bias_embed = bias_embed.astype(np.float32, copy=False)
         # index from bias_embed
         bias_embed = bias_embed.transpose(1, 0, 2)
         _ind = np.arange(0, len(hotwords)).tolist()
         bias_embed = bias_embed[_ind, hotwords_length.tolist()]
         waveform_list = self.load_data(wav_content, self.frontend.opts.frame_opts.samp_freq)
+        if self.is_bb_float16:
+            waveform_list = [w.astype(np.float16, copy=False) for w in waveform_list]
         waveform_nums = len(waveform_list)
         asr_res = []
         for beg_idx in range(0, waveform_nums, self.batch_size):
             end_idx = min(waveform_nums, beg_idx + self.batch_size)
             feats, feats_len = self.extract_feat(waveform_list[beg_idx:end_idx])
+            if self.is_bb_float16:
+                feats = feats.astype(np.float16, copy=False)
             bias_embed = np.expand_dims(bias_embed, axis=0)
             bias_embed = np.repeat(bias_embed, feats.shape[0], axis=0)
             try:

@@ -48,7 +48,7 @@ class Fsmn_vad:
                     model_dir
                 )
 
-        model_file = os.path.join(model_dir, "model.onnx")
+        model_file = os.path.join(model_dir, "model_fp16.onnx")
         if quantize:
             model_file = os.path.join(model_dir, "model_quant_fp16+int8.onnx")
         if not os.path.exists(model_file):
@@ -226,7 +226,7 @@ class Fsmn_vad_online:
                     model_dir
                 )
 
-        model_file = os.path.join(model_dir, "model.onnx")
+        model_file = os.path.join(model_dir, "model_fp16.onnx")
         if quantize:
             model_file = os.path.join(model_dir, "model_quant_fp16+int8.onnx")
         if not os.path.exists(model_file):

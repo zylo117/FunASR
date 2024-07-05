@@ -66,7 +66,8 @@ class Fsmn_vad:
 
         self.frontend = WavFrontend(cmvn_file=cmvn_file, **config["frontend_conf"])
         self.ort_infer = OrtInferSession(
-            model_file, device_id, intra_op_num_threads=intra_op_num_threads
+            model_file, device_id, intra_op_num_threads=intra_op_num_threads,
+            use_tensorrt=kwargs.get('use_tensorrt', False)
         )
         self.batch_size = batch_size
         self.vad_scorer = E2EVadModel(config["model_conf"])
@@ -245,7 +246,8 @@ class Fsmn_vad_online:
 
         self.frontend = WavFrontendOnline(cmvn_file=cmvn_file, **config["frontend_conf"])
         self.ort_infer = OrtInferSession(
-            model_file, device_id, intra_op_num_threads=intra_op_num_threads
+            model_file, device_id, intra_op_num_threads=intra_op_num_threads,
+            use_tensorrt=kwargs.get('use_tensorrt', False)
         )
         self.batch_size = batch_size
         self.vad_scorer = E2EVadModel(config["model_conf"])

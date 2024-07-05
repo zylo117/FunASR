@@ -2,6 +2,7 @@
 
 import functools
 import logging
+import os
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, NamedTuple, Set, Tuple, Union
 
@@ -184,7 +185,7 @@ class ONNXRuntimeError(Exception):
 
 
 class OrtInferSession:
-    def __init__(self, model_file, device_id=-1, intra_op_num_threads=4):
+    def __init__(self, model_file, device_id=-1, intra_op_num_threads=4, use_tensorrt=True):
         device_id = str(device_id)
         sess_opt = SessionOptions()
         sess_opt.intra_op_num_threads = intra_op_num_threads
@@ -204,9 +205,25 @@ class OrtInferSession:
             "arena_extend_strategy": "kSameAsRequested",
         }
 
+        trt_ep = "TensorrtExecutionProvider"
+        trt_provider_options = {
+            "device_id": device_id,
+            'trt_max_workspace_size': 4 * 1024 * 1024 * 1024,  # in bytes，4GB
+            'trt_fp16_enable': True,
+            'trt_int8_enable': False,
+            'trt_engine_cache_enable': True,
+            'trt_timing_cache_enable': True,
+            'trt_layer_norm_fp32_fallback': True,
+            'trt_engine_cache_path': os.path.dirname(model_file),
+            'trt_engine_cache_prefix': os.path.basename(model_file),
+        }
+
         EP_list = []
         if device_id != "-1" and get_device() == "GPU" and cuda_ep in get_available_providers():
-            EP_list = [(cuda_ep, cuda_provider_options)]
+            if use_tensorrt:
+                EP_list = [(trt_ep, trt_provider_options)]
+            else:
+                EP_list = [(cuda_ep, cuda_provider_options)]
         EP_list.append((cpu_ep, cpu_provider_options))
 
         self._verify_model(model_file)

@@ -69,7 +69,8 @@ class CT_Transformer:
 
         self.converter = TokenIDConverter(token_list)
         self.ort_infer = OrtInferSession(
-            model_file, device_id, intra_op_num_threads=intra_op_num_threads
+            model_file, device_id, intra_op_num_threads=intra_op_num_threads,
+            use_tensorrt=kwargs.get('use_tensorrt', False)
         )
         self.batch_size = 1
         self.punc_list = config["model_conf"]["punc_list"]

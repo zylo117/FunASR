@@ -229,7 +229,8 @@ class OrtInferSession:
         self._verify_model(model_file)
         self.session = InferenceSession(model_file, sess_options=sess_opt, providers=EP_list)
 
-        if device_id != "-1" and cuda_ep not in self.session.get_providers():
+        if device_id != "-1" and cuda_ep not in self.session.get_providers() and \
+                trt_ep not in self.session.get_providers():
             warnings.warn(
                 f"{cuda_ep} is not avaiable for current env, the inference part is automatically shifted to be executed under {cpu_ep}.\n"
                 "Please ensure the installed onnxruntime-gpu version matches your cuda and cudnn version, "

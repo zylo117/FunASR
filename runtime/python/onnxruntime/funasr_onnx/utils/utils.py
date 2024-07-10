@@ -197,7 +197,7 @@ class OrtInferSession:
         cuda_provider_options = {
             "device_id": device_id,
             "arena_extend_strategy": "kNextPowerOfTwo",
-            "cudnn_conv_algo_search": "EXHAUSTIVE",
+            "cudnn_conv_algo_search": "HEURISTIC",
             "do_copy_in_default_stream": "true",
         }
         cpu_ep = "CPUExecutionProvider"

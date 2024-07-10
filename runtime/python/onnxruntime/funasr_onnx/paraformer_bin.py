@@ -279,7 +279,7 @@ class ContextualParaformer(Paraformer):
                 )
 
         if quantize:
-            model_bb_file = os.path.join(model_dir, "model_quant_fp16+int8.onnx")
+            model_bb_file = os.path.join(model_dir, "model_quant.onnx")
             model_eb_file = os.path.join(model_dir, "model_eb_quant_fp16+int8.onnx")
         else:
             model_bb_file = os.path.join(model_dir, "model.onnx")
